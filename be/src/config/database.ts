@@ -1,4 +1,14 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "..//../generated/prisma/client"
+import { PrismaPg } from "@prisma/adapter-pg";
+
+/**
+ * Prisma v7 requires a driver adapter
+ */
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+  // optional: silence pg SSL warning
+  ssl: { rejectUnauthorized: false },
+});
 
 /**
  * Use globalThis to prevent multiple Prisma instances
@@ -11,9 +21,11 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: process.env.NODE_ENV === "development"
-      ? ["query", "info", "warn", "error"]
-      : ["error"],
+    adapter,
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["query", "info", "warn", "error"]
+        : ["error"],
   });
 
 if (process.env.NODE_ENV !== "production") {

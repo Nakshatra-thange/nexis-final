@@ -1,3 +1,5 @@
+
+import 'dotenv/config';
 const requiredEnv = [
     "NODE_ENV",
     "PORT",

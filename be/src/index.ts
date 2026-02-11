@@ -3,7 +3,12 @@ import cors from "cors";
 import { config } from "./config";
 import { prisma } from "./config/database";
 import { logger } from "./utils/logger";
+import "dotenv/config";
+
+// Middleware
 import { errorHandler } from "./middleware/errorHandler";
+import { requestLogger } from "./middleware/requestLogger";
+
 // Routes
 import authRoutes from "./routes/auth";
 import chatRoutes from "./routes/chat";
@@ -11,7 +16,6 @@ import conversationRoutes from "./routes/conversations";
 import walletRoutes from "./routes/wallet";
 import transactionRoutes from "./routes/transactions";
 import userRoutes from "./routes/user";
-import { requestLogger } from "./middleware/requestLogger";
 
 // -----------------------------
 // Initialize app
@@ -47,18 +51,6 @@ app.use((req, _res, next) => {
 });
 
 // -----------------------------
-// Routes
-// -----------------------------
-app.use(authRoutes);
-app.use(chatRoutes);
-app.use(conversationRoutes);
-app.use(walletRoutes);
-app.use(transactionRoutes);
-app.use(userRoutes);
-app.use(errorHandler);
-app.use(requestLogger);
-
-// -----------------------------
 // Health check
 // -----------------------------
 app.get("/health", (_req, res) => {
@@ -67,6 +59,16 @@ app.get("/health", (_req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// -----------------------------
+// API Routes (🔥 CORRECT PREFIXING)
+// -----------------------------
+app.use("/api/auth", authRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/conversations", conversationRoutes);
+app.use("/api/wallet", walletRoutes);
+app.use("/api/transactions", transactionRoutes);
+app.use("/api/user", userRoutes);
 
 // -----------------------------
 // 404 handler
@@ -78,28 +80,16 @@ app.use((_req, res) => {
 });
 
 // -----------------------------
-// Global error handler
+// Error handler (🔥 MUST BE LAST)
 // -----------------------------
-app.use(
-  (
-    err: unknown,
-    _req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction
-  ) => {
-    logger.error("Unhandled error", err);
-    res.status(500).json({
-      error: "Internal server error",
-    });
-  }
-);
+app.use(errorHandler);
+app.use(requestLogger);
 
 // -----------------------------
 // Start server
 // -----------------------------
 const server = app.listen(config.server.port, async () => {
   try {
-    // Verify DB connection
     await prisma.$connect();
 
     logger.info("🚀 Nexis backend started", {
