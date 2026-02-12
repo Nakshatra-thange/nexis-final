@@ -1,47 +1,64 @@
 import type { Request, Response, NextFunction } from "express";
 import { prisma } from "../config/database";
-import { extractToken, verifyToken } from "../utils/jwt";
+import { verifyToken } from "../utils/jwt";
 
 /**
- * Extend Request type to include authenticated user
+ * Extend Express Request globally
  */
-export interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    walletAddress: string;
-  };
+declare module "express-serve-static-core" {
+  interface Request {
+    user?: {
+      id: string;
+      walletAddress: string;
+    };
+  }
 }
 
 /**
  * Authentication middleware
  */
 export const authMiddleware = async (
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader) {
-      return res.status(401).json({ error: "Missing token" });
+    // -----------------------------
+    // Validate header
+    // -----------------------------
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        error: "Missing token",
+      });
     }
 
-    const token = extractToken(authHeader);
-    if (!token) {
-      return res.status(401).json({ error: "Invalid token format" });
-    }
+    const parts = authHeader.split(" ");
 
+if (parts.length !== 2 || !parts[1]) {
+  return res.status(401).json({ error: "Invalid token format" });
+}
+
+const token = parts[1];
+
+
+    // -----------------------------
+    // Verify JWT
+    // -----------------------------
     let payload;
     try {
       payload = verifyToken(token);
     } catch (err: any) {
-      if (err.message === "JWT_EXPIRED") {
+      if (err?.message === "JWT_EXPIRED") {
         return res.status(401).json({ error: "Token expired" });
       }
       return res.status(401).json({ error: "Invalid token" });
     }
 
+    // -----------------------------
+    // Fetch user
+    // -----------------------------
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
     });
@@ -50,7 +67,7 @@ export const authMiddleware = async (
       return res.status(401).json({ error: "User not found" });
     }
 
-    // Attach user to request
+    // Attach to request
     req.user = {
       id: user.id,
       walletAddress: user.walletAddress,
@@ -58,6 +75,7 @@ export const authMiddleware = async (
 
     next();
   } catch (error) {
+    console.error("Auth middleware error:", error);
     return res.status(500).json({ error: "Authentication failed" });
   }
 };

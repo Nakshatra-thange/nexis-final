@@ -14,7 +14,7 @@ const chatSchema = z.object({
 });
 
 router.post(
-  "/api/chat",
+  "/",
   authMiddleware,
   async (req, res) => {
     try {

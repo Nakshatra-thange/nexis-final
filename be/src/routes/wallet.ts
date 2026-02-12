@@ -10,7 +10,7 @@ const router = Router();
  * GET /api/wallet/balance
  */
 router.get(
-  "/api/wallet/balance",
+  "/balance",
   authMiddleware,
   async (req, res) => {
     try {
@@ -37,7 +37,7 @@ const historyQuerySchema = z.object({
 });
 
 router.get(
-  "/api/wallet/history",
+  "/history",
   authMiddleware,
   async (req, res) => {
     try {
@@ -59,7 +59,8 @@ router.get(
       );
 
       return res.json(history);
-    } catch {
+    } catch (error){
+      console.error(error)
       return res
         .status(500)
         .json({ error: "Failed to fetch wallet history" });

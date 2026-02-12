@@ -142,7 +142,7 @@ router.post("/:id/submit", authMiddleware, async (req: Request, res: Response) =
     return res.json({
       success: true,
       signature,
-      status: "SUBMITTED",
+      status: TransactionStatus.SUBMITTED,
     });
   } catch {
     return res.status(500).json({ error: "Failed to submit transaction" });

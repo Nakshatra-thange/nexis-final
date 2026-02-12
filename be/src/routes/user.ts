@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../config/database";
 import { authMiddleware } from "../middleware/auth";
+import type { Request, Response } from "express";
 
 const router = Router();
 
@@ -9,9 +10,9 @@ const router = Router();
  * GET /api/user/profile
  */
 router.get(
-  "/api/user/profile",
+  "/profile",
   authMiddleware,
-  async (req, res) => {
+  async (req:Request, res:Response) => {
     try {
       const user = req.user;
       if (!user) {
@@ -50,7 +51,7 @@ const preferencesSchema = z.object({
 }).strict();
 
 router.patch(
-  "/api/user/preferences",
+  "/preferences",
   authMiddleware,
   async (req, res) => {
     try {
