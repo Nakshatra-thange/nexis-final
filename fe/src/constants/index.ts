@@ -36,7 +36,7 @@ export const TX_STATUS = {
   
   // ─── Local Storage Keys ───────────────────────────────────────────────────────
   export const STORAGE_KEYS = {
-    AUTH_TOKEN: 'nexis_auth_token',
+    AUTH_TOKEN: 'synapse-token',
     THEME:      'nexis_theme',
   }
   

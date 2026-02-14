@@ -2,13 +2,18 @@ import api from './api'
 
 export async function sendMessage(
   message: string,
-  conversationId: string | null = null
+  conversationId?: string
 ) {
-  return api.post('/api/chat', {
-    message,
-    conversationId
-  })
+  const payload: any = { message }
+
+  if (conversationId) {
+    payload.conversationId = conversationId
+  }
+
+  return api.post('/api/chat', payload)
 }
+
+
 
 export async function getConversations() {
   return api.get('/api/conversations')

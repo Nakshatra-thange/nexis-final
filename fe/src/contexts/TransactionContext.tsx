@@ -166,6 +166,21 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     intervalsRef.current[transactionId] = interval
   }
 
+  // 🟣 ADD THIS NEW EFFECT HERE — Reload transactions when a new one is created
+  useEffect(() => {
+    const reload = () => {
+      // You might want to refresh the transaction list or trigger a specific action
+      console.log('Transaction created — refreshing')
+      // Optionally trigger a refresh of the active transaction if needed
+    };
+
+    window.addEventListener("tx-created", reload);
+
+    return () => {
+      window.removeEventListener("tx-created", reload);
+    };
+  }, []);
+
   // ─── Cleanup all intervals on unmount ────────────────────────────────────
 
   useEffect(() => {

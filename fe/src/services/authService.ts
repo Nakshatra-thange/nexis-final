@@ -1,5 +1,5 @@
 import api from './api'
-import { STORAGE_KEYS } from '../utils/storage'
+import { STORAGE_KEYS } from '../constants/index'
 
 export async function verifyWallet(
   walletAddress: string,

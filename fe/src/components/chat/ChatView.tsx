@@ -2,19 +2,28 @@ import { useParams } from 'react-router-dom';
 import { Sparkles, Send, Clock } from 'lucide-react';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
-import { useAppContext } from '@/contexts/AppContext';
-
+import { useChat } from '@/contexts/ChatContext';
+import { useEffect } from 'react';
 const ChatView = () => {
   const { id } = useParams();
-  const { messages } = useAppContext();
+  const { messages, isSending } = useChat();
 
-  const showMessages = !!id;
+  const showMessages = messages.length > 0;
+  const { loadConversation } = useChat();
+
+  useEffect(() => {
+  if (id) {
+    loadConversation(id);
+  }
+  }, [id]);
+
 
   return (
     <div className="flex flex-col h-full">
       {showMessages ? (
         <>
           <div className="flex-1 overflow-y-auto">
+            {/* ✅ FIXED: Changed 'message' to 'messages' */}
             <MessageList messages={messages} />
           </div>
           <ChatInput />

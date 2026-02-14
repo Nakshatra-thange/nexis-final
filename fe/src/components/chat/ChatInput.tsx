@@ -1,9 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { ArrowUp } from 'lucide-react';
+import { useChat } from '@/contexts/ChatContext';
 
 const ChatInput = () => {
   const [message, setMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // ✅ CORRECT: Hook called at top level
+  const { sendMessage } = useChat();
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -12,12 +16,19 @@ const ChatInput = () => {
     }
   }, [message]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!message.trim()) return;
-    // TODO: send message
-    setMessage('');
+  
+    const text = message;
+    setMessage("");
+  
+    try {
+      await sendMessage(text); // ✅ Now sendMessage is defined
+    } catch (err) {
+      console.error("Send failed", err);
+    }
   };
-
+  
   return (
     <div className="bg-app-bg border-t border-app-border p-4">
       <div className="bg-app-surface border border-app-border rounded-2xl flex items-end gap-2 px-4 py-3 focus-within:border-cherry-soda/50 focus-within:glow-pink transition-all duration-200">

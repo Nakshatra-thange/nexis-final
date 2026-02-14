@@ -1,13 +1,19 @@
-import { createRoot } from "react-dom/client";
-import { Buffer } from 'buffer'
-import App from "./App.tsx";
-import "./index.css";
-import { AppWalletProvider } from "./providers/WalletProvider.tsx";
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import "./index.css";   // ⭐ THIS LINE IS CRITICAL
 
-window.Buffer = Buffer
-
-createRoot(document.getElementById("root")!).render(
-  <AppWalletProvider>
-    <App />
-  </AppWalletProvider>
+import App from "./App";
+import AppProviders from "./contexts/AppProviders";
+import { AppProvider } from "./contexts/AppContext";
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <AppProviders>
+        <AppProvider>
+        <App />
+        </AppProvider>
+      </AppProviders>
+    </BrowserRouter>
+  </React.StrictMode>
 );

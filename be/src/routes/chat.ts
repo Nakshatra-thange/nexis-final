@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { processChat } from "../services/ai";
 import { authMiddleware } from "../middleware/auth";
-
+import { aiClient } from "../services/ai/openrouter";
 const router = Router();
 
 /**
@@ -50,6 +50,7 @@ router.post(
 
       return res.status(200).json(result);
     } catch (error) {
+      console.error("CHAT ERROR:", error); 
       return res.status(500).json({
         error: "Failed to process chat",
       });

@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient'
+import { apiClient } from '../services/apiClient'
 
 const api = {
   get: async <T = any>(...args: Parameters<typeof apiClient.get>) => {

@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { sendMessage as apiSendMessage, getConversations, getConversation, deleteConversation as apiDeleteConversation } from '@/services/chatService'
 import { useAuth } from './AuthContext'
 import { MSG_ROLE } from '@/constants'
+import { useNavigate } from "react-router-dom"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ export interface Message {
   content: string
   metadata?: MessageMetadata
   createdAt: string
+  
 }
 
 export interface Conversation {
@@ -49,12 +51,13 @@ interface ChatContextValue extends ChatState {
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
-const ChatContext = createContext<ChatContextValue | null>(null)
+export const  ChatContext = createContext<ChatContextValue | null>(null)
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
 
   const [state, setState] = useState<ChatState>({
     conversations: [],
@@ -145,6 +148,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await apiSendMessage(trimmed, state.currentConversationId ?? undefined)
+      if (response.requiresApproval) {
+        window.dispatchEvent(new Event("tx-created"));
+      }
+      
+      console.log("AI RESPONSE:", response);
+
 
       // Build the real user message (replaces the temp one)
       const realUserMessage: Message = {
@@ -204,6 +213,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           isSending: false,
         }
       })
+
+      // ✅ ADD NAVIGATE HERE - Right after state update
+      navigate(`/app/c/${response.conversationId}`)
+
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Something went wrong'
       toast.error(errorMsg)

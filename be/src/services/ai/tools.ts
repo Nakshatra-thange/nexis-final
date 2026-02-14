@@ -1,70 +1,70 @@
-/**
- * Tool definitions exposed to the AI model
- * These define WHAT the AI can request,
- * not HOW the backend executes them.
- */
 
-export const aiTools = [
-    {
+import type { ChatCompletionTool } from "openai/resources/chat/completions";
+export const aiTools :ChatCompletionTool[]= [
+  {
+    type: "function",
+    function: {
       name: "get_balance",
       description:
         "Get the current SOL and SPL token balances for the user's connected wallet",
-      input_schema: {
+      parameters: {
         type: "object",
         properties: {},
-        required: [],
       },
     },
-  
-    {
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "create_transfer",
-      description:
-        "Create a pending SOL transfer transaction that requires user approval in their wallet",
-      input_schema: {
+      description: "Create a pending SOL transfer transaction that requires user approval",
+      parameters: {
         type: "object",
         properties: {
-          recipient: {
+          recipient: { 
             type: "string",
-            description: "Recipient Solana wallet address",
+            description: "The recipient's wallet address"
           },
-          amount: {
+          amount: { 
             type: "number",
-            description: "Amount of SOL to send (not in lamports)",
+            description: "Amount of SOL to transfer"
           },
-          memo: {
+          memo: { 
             type: "string",
-            description: "Optional transaction note",
+            description: "Optional memo for the transaction"
           },
         },
         required: ["recipient", "amount"],
       },
     },
-  
-    {
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "get_transaction_history",
-      description:
-        "Get recent transaction history for the user's wallet",
-      input_schema: {
+      description: "Get recent transaction history for the user's wallet",
+      parameters: {
         type: "object",
         properties: {
-          limit: {
+          limit: { 
             type: "number",
-            description: "Number of transactions to return (default 10, max 50)",
+            description: "Number of transactions to return (default: 10)"
           },
         },
         required: [],
       },
     },
-  
-    {
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "estimate_fee",
-      description:
-        "Estimate the network fee for a SOL transfer",
-      input_schema: {
+      description: "Estimate network fee for SOL transfer",
+      parameters: {
         type: "object",
         properties: {},
         required: [],
       },
     },
-  ] as const;
-  
+  },
+];

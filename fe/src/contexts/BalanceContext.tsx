@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { getBalance } from '@/services/walletService'
 import { useAuth } from './AuthContext'
 import { BALANCE_REFRESH_INTERVAL_MS } from '@/constants'
+import { fetchBalance } from "@/services/walletService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

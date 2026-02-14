@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../config/database";
-import { verifySignature } from "../utils/crypto";
 import { generateToken } from "../utils/jwt";
+import { PublicKey } from "@solana/web3.js";
+import nacl from "tweetnacl";
 
 const router = Router();
 
@@ -31,8 +32,17 @@ router.post("/verify", async (req, res) => {
 
     const { walletAddress, signature, message } = parsed.data;
 
+    // 🔥 FIXED: Use TextEncoder instead of Buffer
+    const messageBytes = new TextEncoder().encode(message);
+    const signatureBytes = Buffer.from(signature, "base64");
+    const pubkeyBytes = new PublicKey(walletAddress).toBytes();
+
     // Verify wallet signature
-    const isValid = verifySignature(message, signature, walletAddress);
+    const isValid = nacl.sign.detached.verify(
+      messageBytes,
+      signatureBytes,
+      pubkeyBytes
+    );
 
     if (!isValid) {
       return res.status(401).json({ error: "Invalid signature" });
@@ -67,7 +77,6 @@ router.post("/verify", async (req, res) => {
 
 /**
  * POST /api/auth/logout
- * (Stateless version – frontend deletes token)
  */
 router.post("/logout", (_req, res) => {
   return res.json({ success: true });

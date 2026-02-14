@@ -38,11 +38,15 @@ const AssistantMessage = ({ content, timestamp, transaction }: Props) => {
       <div className="w-8 h-8 rounded-full gradient-pink flex items-center justify-center shrink-0 text-white text-xs font-bold">
         S
       </div>
-      <div className="max-w-[65%]">
-        <div className="bg-app-surface border border-app-border rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm text-app-text text-bubbly">
+      <div className="max-w-[80%] md:max-w-[70%] lg:max-w-[60%] min-w-[120px]">
+        <div className="bg-app-surface border border-app-border rounded-2xl rounded-tl-sm px-5 py-3 text-sm text-app-text text-bubbly w-fit">
           {renderContent(content)}
         </div>
-        {transaction && <TransactionCard transaction={transaction} />}
+        {transaction && (
+          <div className="mt-2">
+            <TransactionCard transaction={transaction} />
+          </div>
+        )}
         <p className="text-[10px] text-app-text-muted mt-1">{timestamp}</p>
       </div>
     </div>

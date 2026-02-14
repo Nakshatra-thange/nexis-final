@@ -64,6 +64,24 @@
     --pink-glow-strong: 0 0 40px rgba(249, 168, 212, 0.25);
   }
 }
+@keyframes floaty {
+  0% {
+    transform: translate(0px,0px);
+  }
+  25% {
+    transform: translate(30px,-40px);
+  }
+  50% {
+    transform: translate(-20px,-80px);
+  }
+  75% {
+    transform: translate(40px,-30px);
+  }
+  100% {
+    transform: translate(0px,0px);
+  }
+}
+
 
 @layer base {
   * {

@@ -5,7 +5,7 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  timestamp: string;
+  createdAt: string;
   transaction?: {
     id: string;
     from: string;
@@ -24,12 +24,12 @@ const MessageList = ({ messages }: { messages: Message[] }) => {
     <div className="px-6 py-4 space-y-4">
       {messages.map((msg) =>
         msg.role === 'user' ? (
-          <UserMessage key={msg.id} content={msg.content} timestamp={msg.timestamp} />
+          <UserMessage key={msg.id} content={msg.content} timestamp={msg.createdAt} />
         ) : (
           <AssistantMessage
             key={msg.id}
             content={msg.content}
-            timestamp={msg.timestamp}
+            timestamp={msg.createdAt}
             transaction={msg.transaction}
           />
         )

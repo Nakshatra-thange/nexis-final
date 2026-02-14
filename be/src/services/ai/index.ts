@@ -1,5 +1,3 @@
-import { prisma } from "../../config/database";
-import { aiChat } from "../../config/ai";
 import { aiTools } from "./tools";
 import { generateSystemPrompt } from "./prompts";
 import {
@@ -8,265 +6,170 @@ import {
   executeGetTransactionHistory,
   executeEstimateFee,
 } from "./executors";
-import { logger } from "../../utils/logger";
+import { prisma } from "../../config/database";
+import { aiClient } from "./openrouter";
 
-
-
-/**
- * =========================
- * Types
- * =========================
- */
-const MAX_HISTORY_MESSAGES = 10;
-
-type ToolUseBlock = {
-  type: "tool_use";
-  id: string;
-  name: string;
-  input: any;
-};
-
-type ProcessChatResult = {
-  message: string;
-  conversationId: string;
-  transactionId?: string;
-  requiresApproval: boolean;
-};
-
-/**
- * =========================
- * Main AI Chat Processor
- * =========================
- */
-export const processChat = async (
+export async function processChat(
   userId: string,
   conversationId: string | null,
   message: string
-): Promise<ProcessChatResult> => {
-  try {
-    /**
-     * =========================
-     * Load user
-     * =========================
-     */
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+) {
+  let conversation;
+
+  if (conversationId) {
+    conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        userId,
+      },
     });
-
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    /**
-     * =========================
-     * Load or create conversation
-     * =========================
-     */
-    const conversation = conversationId
-      ? await prisma.conversation.findFirst({
-          where: {
-            id: conversationId,
-            userId,
-            isActive: true,
-          },
-        })
-      : await prisma.conversation.create({
-          data: {
-            userId,
-            title: message.slice(0, 50),
-          },
-        });
 
     if (!conversation) {
       throw new Error("Conversation not found");
     }
-
-    /**
-     * =========================
-     * Load conversation history
-     * =========================
-     */
-    const history = await prisma.message.findMany({
-      where: { conversationId: conversation.id },
-      orderBy: { createdAt: "desc" },
-      take: MAX_HISTORY_MESSAGES,
-    });
-
-    const orderedHistory = [...history].reverse();
-
-
-    /**
-     * =========================
-     * Build system prompt
-     * =========================
-     */
-    let balance:
-      | { sol: number; tokens?: unknown[] }
-      | { error: string }
-      | undefined;
-
-    try {
-      balance = await executeGetBalance(userId, user.walletAddress);
-    } catch {
-      balance = undefined;
-    }
-
-    const systemPrompt = generateSystemPrompt(
-      { walletAddress: user.walletAddress },
-      balance && !("error" in balance) ? { sol: balance.sol } : undefined
-    );
-
-    /**
-     * =========================
-     * Build messages array
-     * =========================
-     */
-    const messages: any[] = [
-      { role: "system", content: systemPrompt },
-      ...orderedHistory.map((m) => ({
-        role: m.role as "user"|"assistant",
-        content: m.content,
-      })),
-      { role: "user", content: message },
-    ];
-
-    /**
-     * =========================
-     * Call AI (tool loop)
-     * =========================
-     */
-    let aiResponse = await aiChat({
-      messages,
-      tools: aiTools,
-    });
-
-    const toolCalls: any[] = [];
-    let finalText = "";
-    let transactionId: string | undefined;
-
-    while (true) {
-      const toolUseBlocks = aiResponse.content?.filter(
-        (block): block is ToolUseBlock =>
-          typeof block === "object" &&
-          block !== null &&
-          block.type === "tool_use"
-      );
-
-      // No more tools → final response
-      if (!toolUseBlocks || toolUseBlocks.length === 0) {
-        finalText =
-          aiResponse.content
-            ?.filter((b: any) => b.type === "text")
-            ?.map((b: any) => b.text)
-            ?.join("\n") ?? "";
-        break;
-      }
-
-      for (const toolCall of toolUseBlocks) {
-        const { name, input, id } = toolCall;
-
-        logger.info("Executing tool", { name, input });
-
-        let result: any;
-
-        switch (name) {
-          case "get_balance":
-            result = await executeGetBalance(
-              userId,
-              user.walletAddress
-            );
-            break;
-
-          case "create_transfer":
-            result = await executeCreateTransfer(
-              userId,
-              user.walletAddress,
-              input.recipient,
-              input.amount,
-              input.memo
-            );
-            if (result?.transactionId) {
-              transactionId = result.transactionId;
-            }
-            break;
-
-          case "get_transaction_history":
-            result = await executeGetTransactionHistory(
-              userId,
-              user.walletAddress,
-              input.limit
-            );
-            break;
-
-          case "estimate_fee":
-            result = await executeEstimateFee();
-            break;
-
-          default:
-            result = { error: "Unknown tool" };
-        }
-
-        toolCalls.push({ name, input, result });
-
-        messages.push({
-          role: "user",
-          content: [
-            {
-              type: "tool_result",
-              tool_use_id: id,
-              content: JSON.stringify(result),
-            },
-          ],
-        });
-      }
-
-      // Call AI again with tool results
-      aiResponse = await aiChat({
-        messages,
-        tools: aiTools,
-      });
-    }
-
-    /**
-     * =========================
-     * Save messages
-     * =========================
-     */
-    await prisma.message.create({
+  } else {
+    conversation = await prisma.conversation.create({
       data: {
-        conversationId: conversation.id,
-        role: "user",
-        content: message,
+        userId,
+        title: message.slice(0, 50),
+        isActive: true,
       },
     });
 
-    await prisma.message.create({
-      data: {
-        conversationId: conversation.id,
-        role: "assistant",
-        content: finalText,
-        metadata: { toolCalls },
-      },
-    });
-
-    /**
-     * =========================
-     * Return response
-     * =========================
-     */
-    return {
-      message: finalText,
-      conversationId: conversation.id,
-      transactionId,
-      requiresApproval: Boolean(transactionId),
-    };
-  } catch (error) {
-    logger.error("processChat failed", error);
-    return {
-      message:
-        "Sorry, something went wrong while processing your request. Please try again.",
-      conversationId: conversationId ?? "",
-      requiresApproval: false,
-    };
+    conversationId = conversation.id;
   }
-};
+  
+  // Save user message
+  await prisma.message.create({
+    data: {
+      conversationId,
+      role: "user",
+      content: message,
+    },
+  });
+
+  try {
+    // --------------------------------------------------
+    // 1️⃣ Get user + wallet
+    // --------------------------------------------------
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) throw new Error("User not found");
+
+    if (!user.walletAddress) {
+      throw new Error("Wallet not connected");
+    }
+    
+    const walletAddress = user.walletAddress;
+    
+    const systemPrompt = generateSystemPrompt(walletAddress);
+
+    // --------------------------------------------------
+    // 2️⃣ Initial AI call WITH tools
+    // --------------------------------------------------
+    const completion = await aiClient.chat.completions.create({
+      model: "openai/gpt-5.2",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: message },
+      ],
+      tools: aiTools,
+      tool_choice: "auto",
+      max_tokens: 1024,
+    });
+
+    const aiMessage = completion.choices?.[0]?.message;
+
+    if (!aiMessage) {
+      return {
+        message: "No response from AI.",
+        conversationId,
+      };
+    }
+
+    // --------------------------------------------------
+    // 3️⃣ If AI DID NOT request tool → return directly
+    // --------------------------------------------------
+    if (!aiMessage.tool_calls?.length) {
+      const finalReply = aiMessage.content ?? "No reply.";
+      
+      // ✅ STEP 4 — SAVE ASSISTANT MESSAGE (no tool calls)
+      await prisma.message.create({
+        data: {
+          conversationId,
+          role: "assistant",
+          content: finalReply,
+        },
+      });
+
+      return {
+        message: finalReply,
+        conversationId,
+      };
+    }
+
+    // --------------------------------------------------
+    // 4️⃣ TOOL EXECUTION LOOP
+    // --------------------------------------------------
+    const toolCall = aiMessage.tool_calls[0] as any;
+    const toolName = toolCall?.function?.name;
+
+    let toolResult: any = null;
+
+    if (toolName === "get_balance") {
+      toolResult = await executeGetBalance(walletAddress);
+    }
+
+    // --------------------------------------------------
+    // 5️⃣ Send tool result BACK to AI
+    // --------------------------------------------------
+    const secondCompletion = await aiClient.chat.completions.create({
+      model: "openai/gpt-5.2",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: message },
+        aiMessage,
+        {
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(toolResult),
+        },
+      ],
+      tools: aiTools,
+      max_tokens: 1024,
+    });
+
+    const finalReply = secondCompletion.choices?.[0]?.message?.content ?? "No response.";
+
+    // ✅ STEP 4 — SAVE ASSISTANT MESSAGE (with tool calls)
+    await prisma.message.create({
+      data: {
+        conversationId,
+        role: "assistant",
+        content: finalReply,
+        metadata: toolCall
+          ? {
+              toolCalls: [toolCall.function.name],
+            }
+          : undefined,
+      },
+    });
+
+    return {
+      message: finalReply,
+      conversationId,
+      transactionId:
+        toolCall?.function.name === "create_transfer"
+          ? toolResult?.transactionId
+          : undefined,
+      requiresApproval:
+        toolCall?.function.name === "create_transfer",
+    };
+    
+  } catch (err) {
+    console.error("CHAT ERROR:", err);
+    throw err;
+  }
+}
